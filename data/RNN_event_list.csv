@@ -1,0 +1,77 @@
+play_video
+courseware_load
+page_close
+pause_video
+load_video
+seq_goto
+seek_video
+problem_check_correct
+seq_next
+info page
+problem_check_incorrect
+stop_video
+showanswer
+problem_show
+book
+thread discussion
+video_show_cc_menu
+homepage
+video_hide_cc_menu
+progress page
+edx.course.enrollment.activated
+save_problem_success
+forum homepage
+edx.course.enrollment.mode_changed
+inline discussion
+textbook.pdf.page.scrolled
+show_transcript
+speed_change_video
+seq_prev
+openassessmentblock.save_submission
+openassessmentblock.get_peer_submission
+edx.course.enrollment.deactivated
+textbook.pdf.display.scaled
+openassessmentblock.peer_assess
+hide_transcript
+create discussion
+edx.forum.thread.created
+reply thread discussion
+edx.forum.response.created
+reset_problem
+textbook.pdf.chapter.navigated
+wiki homepage
+edx.forum.searched
+view users
+reply discussion comment
+edx.forum.comment.created
+openassessmentblock.create_submission
+edx.certificate.created
+edx.certificate.evidence_visited
+edx.cohort.user_added
+jump_to_id
+openassessmentblock.self_assess
+edx.problem.hint.feedback_displayed
+upvote discussion comment
+textbook.pdf.search.navigatednext
+upvote thread discussion
+update discussion comment
+textbook.pdf.search.executed
+about page
+textbook.pdf.zoom.buttons.changed
+upload to discussion
+follow thread discussion
+update thread discussion
+openassessmentblock.submit_feedback_on_assessments
+problem_check_fail
+edx.user.settings.changed
+openassessment.upload_file
+textbook.pdf.thumbnails.toggled
+textbook.pdf.page.navigated
+textbook.pdf.zoom.menu.changed
+endorse discussion comment
+reset_problem_fail
+save_problem_fail
+delete thread discussion
+unfollow thread discussion
+delete discussion comment
+edx.cohort.user_add_requested

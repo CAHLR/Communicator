@@ -1,0 +1,4 @@
+actual_user_id,anon_user_id,assigned_user_id,email,first_name,last_name,username
+1,1.0,1.0,email1@email.com,john,doe,johndoe
+2,2.0,2.0,email2@email.com,jane,doe,janedoe
+3,3.0,3.0,email3@email.com,john,smith,johnsmith

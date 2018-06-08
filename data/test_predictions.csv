@@ -1,0 +1,4 @@
+anon_user_id,attrition_prediction,completion_prediction,certification_prediction
+1.0,30.0,25.0,98.0
+2.0,40.0,75.0,6.0
+3.0,50.0,50.0,50.0
