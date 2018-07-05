@@ -112,7 +112,7 @@ router.route('/email')
         if (req.body.ann === 'true') {
           ids = all_ids;
         }
-        if (ids) {
+        if (ids) { // Could get the number of users by taking the length of this
             for (var j = 0; j < ids.length; j++) {
               var id = ids[j];
               if (id in anon_to_email) {
@@ -224,7 +224,7 @@ router.route('/all').get(function(req, res) {
 router.route('/save').post(function(req, res) {
   var policy = new Policy();
   if (req.body.analytics === 'true') {
-    if (req.body.ids) {
+    if (req.body.ids) { // Could also get user count here
       policy.ids = req.body.ids;
     }
     policy.comp = req.body.comp;
