@@ -3,6 +3,13 @@ import logo from './logo.svg';
 
 import "./styles.css";
 
+/*
+TODOs for Jeff:
+- refactor all event hooks from client_main into the component itself
+- compartmentalize the parts of the Communicator UI
+- deglobalify and componentize cross_main and client_main functions
+*/
+
 class Communicator extends Component {
   render() {
     return (
