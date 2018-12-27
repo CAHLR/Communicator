@@ -6,7 +6,7 @@ import "./styles.css";
 class Communicator extends Component {
   render() {
     return (
-      <div>
+      <div style={{ padding: 20 }}>
         <h1 style={{ marginBottom: "0.5em" }}>Communicator</h1>
         <h3>Select recipients by:</h3>
 
