@@ -1,6 +1,6 @@
 import React from 'react';
 import ReactDOM from 'react-dom';
-import App from './App';
+import Communicator from './Communicator';
 
 it('renders without crashing', () => {
   const div = document.createElement('div');

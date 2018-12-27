@@ -61,7 +61,7 @@ display:none;
 }
 
 #saveChanges {
-  display:none; background:#00A0E3; float:right; color: white; margin:50px; width:200px; height:50px"
+  display:none; background:#00A0E3; float:right; color: white; margin:50px; width:200px; height:50px
 }
 
 
@@ -107,7 +107,7 @@ h2 {
 }
 
 h1, h2 {
-  font-family: "Open Sans";
+  font-family: "Yanone Kaffeesatz";
   text-rendering: optimizeLegibility;
 }
 
