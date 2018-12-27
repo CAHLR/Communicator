@@ -1,4 +1,5 @@
 import * as d3 from "d3";
+import { crossfilter } from "crossfilter2";
 
 // TODO(Jeff): use environment variables here
 const secretUsername = 'your secret username';
