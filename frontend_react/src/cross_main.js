@@ -1,5 +1,6 @@
 import * as d3 from "d3";
 
+// TODO(Jeff): use environment variables here
 const secretUsername = 'your secret username';
 const secretPassword = 'your secret pass';
 
@@ -16,7 +17,8 @@ const drawGraphs = (dataUrl, json) => {
     d3.csv(dataUrl).header("Authorization", "Basic " + btoa(secretUsername + ":" + secretPassword)).get(loadData);
   }
 }
-
+// TODO(Jeff): fix side effects this has
+// TODO(Jeff): fix export issues
 const loadData = (error, students) => {
   if (error) {
     console.log(error);
