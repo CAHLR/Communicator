@@ -38,7 +38,7 @@ const loadData = (error, students) => {
     .key((d) => { return 'Test'; });
 
   // A little coercion, since the CSV is untyped.
-  students.forEach(function (d, i) {
+  students.forEach((d, i) => {
     d.index = i;
     d.completion_prediction = +d.completion_prediction;
     d.attrition_prediction = +d.attrition_prediction;

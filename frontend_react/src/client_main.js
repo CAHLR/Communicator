@@ -224,9 +224,10 @@ const save_changes = () => {
 }
 
 // TODO(Jeff): deglobalify this
-window.onload = () => {
-  drawGraphs("https://" + server + ":" + port + "/api/predictions");
-  get_analytics();
+// Note(Jeff): commented out is refactor complete
+export const onLoad = () => {
+  // drawGraphs("https://" + server + ":" + port + "/api/predictions");
+  // get_analytics();
   $('#emailButton').on('click', () => {
     if ($('#reply-to').attr('value') === "" || !($('#reply-to').attr('value').includes("@"))) {
       // TODO(Jeff): make this more elegantly handled in UX
