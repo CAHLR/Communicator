@@ -20,8 +20,9 @@
     "dotenv": "6.0.0",
     "dotenv-expand": "4.2.0",
     "eslint": "5.6.0",
-    "eslint-config-react-app": "^3.0.6",
+    "eslint-config-edx": "^4.0.4",
     "eslint-loader": "2.1.1",
+    "eslint-plugin-dollar-sign": "^1.0.1",
     "eslint-plugin-flowtype": "2.50.1",
     "eslint-plugin-import": "2.14.0",
     "eslint-plugin-jsx-a11y": "6.1.2",
@@ -58,10 +59,11 @@
   "scripts": {
     "start": "node scripts/start.js",
     "build": "node scripts/build.js",
-    "test": "node scripts/test.js"
+    "test": "node scripts/test.js",
+    "lint": "./node_modules/.bin/eslint src/**"
   },
   "eslintConfig": {
-    "extends": "react-app"
+    "extends": "eslint-config-edx"
   },
   "browserslist": [
     ">0.2%",
