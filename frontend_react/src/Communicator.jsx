@@ -21,26 +21,76 @@ class Communicator extends Component {
       dropdownValue: '',
       instructorEmail: '',
       emailButtonError: '',
+      analyticsRadio: false,
+      selectedStudents: [],
+      emailButtonClicked: false,
+      totalActiveLearners: 0,
+      totalLearners: 0,
     };
 
     this.onEmailButtonClick = this.onEmailButtonClick.bind(this);
+    this.onLoad = this.onLoad.bind(this);
+    this.onAnalyticsRadioClick = this.onAnalyticsRadioClick.bind(this);
+    this.onAttrClick = this.onAttrClick.bind(this);
+    this.onCompNoCertClick = this.onCompNoCertClick.bind(this);
+    this.getAnalytics = this.getAnalytics.bind(this);
+    this.getAll = this.getAll.bind(this);
+    this.setInstructorEmail = this.setInstructorEmail.bind(this);
+    this.drawGraphs = this.drawGraphs.bind(this);
+    this.clearDrop = this.clearDrop.bind(this);
+    this.makeName = this.makeName.bind(this);
+    this.sendEmails = this.sendEmails.bind(this);
+    this.sendPolicy = this.sendPolicy.bind(this);
   }
 
   componentWillMount() {
     this.onLoad();
   }
 
-  onEmailButtonClick(event) {
+  onAttrClick() {
+    console.log('test');
+  }
+
+  onCompNoCertClick() {
+    console.log('test');
+  }
+
+  onEmailButtonClick() {
     if (this.state.instructorEmail === '' || !this.state.instructorEmail.includes('@')) {
       this.setState({
         emailButtonError: 'You have entered an invalid Instructor Email',
       });
+    } else if (this.state.emailButtonClicked) {
+      this.sendEmails();
+      this.sendPolicy();
+      if (this.state.analyticsRadio) {
+        this.getAnalytics();
+      } else {
+        this.getAll();
+      }
+
+      this.setState({
+        emailButtonClicked: false,
+      });
+    } else {
+      this.setState({
+        emailButtonClicked: true,
+      });
     }
-    // TODO(Jeff): finish this
   }
 
   onLoad() {
     this.drawGraphs(`https://${process.env.SERVER}:${process.env.PORT}/api/predictions`);
+  }
+
+  onAnalyticsRadioClick(event) {
+    this.setState({
+      analyticsRadio: event.target.checked,
+    });
+  }
+
+  async getAll() {
+    console.log('test');
   }
 
   async getAnalytics() {
@@ -80,6 +130,14 @@ class Communicator extends Component {
     });
   }
 
+  sendEmails() {
+    console.log('test');
+  }
+
+  sendPolicy() {
+
+  }
+
   drawGraphs(dataUrl, json) {
     if (json) {
       d3.json(dataUrl);
@@ -113,27 +171,38 @@ class Communicator extends Component {
 
         <form className="radios">
           <div>
-            <input type="radio" id="analyticsRadio" name="type" value="analytics" checked="checked" />
+            <input type="radio" id="analyticsRadio" name="type" value="analytics" checked={this.state.analyticsRadio} onChange={this.onAnalyticsRadioClick} />
             Analytics
             <input type="radio" id="allRadio" name="type" value="all" />
             All Learners
           </div>
         </form>
 
-        <select id="myDropdown" onChange="optSelected(this.value)">
+        <select id="myDropdown" onChange="optSelected(this.value)" >
+          {this.state.dropdownValue}
           {this.state.analyticsOptions}
         </select>
         <div id="analytics">
           <p style={{ float: 'left', clear: 'left', marginTop: '30px' }}>
             Analytics pre-sets to try:
-            <button type="button" id="comp-no-cert">Predicted to complete but not to earn a certificate</button>
-            <button type="button" id="attr-no-comp-cert">Predicted to attrit and not complete</button>
+            <button type="button" id="comp-no-cert" onClick={this.onCompNoCertClick}>
+              Predicted to complete but not to earn a certificate
+            </button>
+            <button type="button" id="attr-no-comp-cert" onClick={this.onAttrClick}>
+              Predicted to attrit and not complete
+            </button>
           </p>
 
           <Charts />
 
           <aside id="totals">
-            <span id="active">-</span><span id="percentage" /> of <span id="total">-</span> learners selected
+            <span id="active">
+              {this.state.totalActiveLearners > 0 ? this.state.totalActiveLearners : "-"}
+            </span>
+            <span id="percentage" />
+            of
+            <span id="total">{this.state.totalLearners > 0 ? this.state.totalLearners : "-"}</span>
+            learners selected
           </aside>
 
           <div id="lists">
@@ -165,7 +234,25 @@ class Communicator extends Component {
               <textarea id="email-body" placeholder="Use [:fullname:] to insert learner's full name and [:firstname:] to insert learner's last name" />
               <h4>Body</h4>
 
-              <button type="button" id="emailButton" onClick={this.onEmailButtonClick}>Send email to selected learners</button>
+              <button
+                type="button"
+                id="emailButton"
+                onClick={this.onEmailButtonClick}
+                style={{
+                  backgroundColor: this.state.emailButtonClicked ? 'red' : '#e4e4e4',
+                  backgroundImage: this.state.emailButtonClicked ? 'linear-gradient(red,#8b0000)' : 'linear-gradient(#e4e4e4,#d1c9c9)',
+                }}
+              >
+                {(() => {
+                  if (this.state.emailButtonClicked) {
+                    if (!this.state.analyticsRadio) {
+                      return `Are you sure you want to send this email to ${this.state.selectedStudents.length} students?`;
+                    }
+                    return `Are you sure you want to send this email to ${this.state.totalActiveLearners} students?`;
+                  }
+                  return 'Send email to selected learners';
+                })()}
+              </button>
               <input id="automated" type="checkbox" />
               <p id="automated2" style={{ display: 'inline' }}>Automatically check for and send to new matches found daily</p>
               <p id="tip">Tip: Enabling this feature will check everyday for learners who meet the analytics criteria of this communication and will send this email to them (learners will never recieve an email twice).</p>

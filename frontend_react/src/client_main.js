@@ -228,6 +228,7 @@ const save_changes = () => {
 export const onLoad = () => {
   // drawGraphs("https://" + server + ":" + port + "/api/predictions");
   // get_analytics();
+  /*
   $('#emailButton').on('click', () => {
     if ($('#reply-to').attr('value') === "" || !($('#reply-to').attr('value').includes("@"))) {
       // TODO(Jeff): make this more elegantly handled in UX
@@ -252,7 +253,9 @@ export const onLoad = () => {
       }
     }
   });
+  */
   // TODO(Jeff): document these magic numbers
+  // filter function is from crossfilter2
   $('#comp-no-cert').on('click', () => {
     filter([[80, 100], null, [0, 20]]);
   });
