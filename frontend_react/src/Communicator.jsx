@@ -11,7 +11,6 @@ import './edxStyles.css';
 
 /*
 TODOs for Jeff:
-- refactor all event hooks from client_main into the component itself
 - compartmentalize the parts of the Communicator UI
 - deglobalify and componentize cross_main and client_main functions
 */
@@ -25,6 +24,7 @@ class Communicator extends Component {
       instructorEmail: '',
       emailButtonError: '',
       analyticsRadio: true,
+      analyticsDisplay: 'block',
       allRadio: false,
       selectedStudents: [],
       emailButtonClicked: false,
@@ -36,8 +36,17 @@ class Communicator extends Component {
       emailSentMessage: '',
       oldSubject: '',
       automatedChecked: false,
+      automatedDisplay: 'inline',
+      automated2Display: 'inline',
       saveChangesDisplay: 'none',
       tipDisplay: 'none',
+      filterLimits: {
+        'completion-chart': [0, 100],
+        'attrition-chart': [0, 100],
+        'certification-chart': [0, 100],
+      },
+      allRecipientsDisplay: 'none',
+      recipientsDisplay: 'block',
     };
 
     this.onEmailButtonClick = this.onEmailButtonClick.bind(this);
@@ -64,6 +73,8 @@ class Communicator extends Component {
     this.optSelected = this.optSelected.bind(this);
     this.onCheckTipMouseOver = this.onCheckTipMouseOver.bind(this);
     this.onCheckTipMouseOut = this.onCheckTipMouseOut.bind(this);
+    this.saveChanges = this.saveChanges.bind(this);
+    this.onSaveChangesClick = this.onSaveChangesClick.bind(this);
   }
 
   componentWillMount() {
@@ -71,11 +82,13 @@ class Communicator extends Component {
   }
 
   onAttrClick() {
-    console.log('test');
+    // TODO(Jeff): document these numbers
+    this.filter([[0, 70], [80, 100], [0, 70]]);
   }
 
   onCompNoCertClick() {
-    console.log('test');
+    // TODO(Jeff): document these numbers
+    this.filter([[80, 100], null, [0, 20]]);
   }
 
   onAutomatedClick(event) {
@@ -115,16 +128,29 @@ class Communicator extends Component {
 
   onAllRadioClick() {
     this.setState({
+      analyticsDisplay: 'none',
       allRadio: true,
       analyticsRadio: false,
+      automatedDisplay: 'none',
+      automated2Display: 'none',
+      allRecipientsDisplay: 'block',
+      recipientsDisplay: 'none',
+      saveChangesDisplay: 'none',
     });
+    this.getAll();
   }
 
   onAnalyticsRadioClick() {
     this.setState({
+      analyticsDisplay: 'block',
+      automatedDisplay: 'inline',
+      automated2Display: 'inline',
+      allRecipientsDisplay: 'none',
+      recipientsDisplay: 'block',
       analyticsRadio: true,
       allRadio: false,
     });
+    this.getAnalytics();
   }
 
 
@@ -140,6 +166,10 @@ class Communicator extends Component {
     });
   }
 
+  async onSaveChangesClick() {
+    await this.saveChanges();
+    await this.getAnalytics();
+  }
 
   setEmailBody(event) {
     this.setState({
@@ -178,7 +208,7 @@ class Communicator extends Component {
       const keys = Object.keys(settings);
       for (let i = 0; i < keys.length; i += 1) {
         const name = this.makeName(settings[keys[i]].timestamp, settings[keys[i]].subject);
-        analyticsOptions.append(<option value={JSON.stringify(settings[keys[i]])}>{name}</option>);
+        analyticsOptions.push(<option value={JSON.stringify(settings[keys[i]])}>{name}</option>);
       }
       this.setState({
         analyticsOptions,
@@ -256,8 +286,62 @@ class Communicator extends Component {
     }
   }
 
+  async saveChanges() {
+    const ids = this.getIDs();
+    const comp = this.state.filterLimits['completion-chart'];
+    const attr = this.state.filterLimits['attrition-chart'];
+    const cert = this.state.filterLimits['certification-chart'];
+    const automated = this.state.automatedChecked;
+
+    const settings = await fetch(`https://${process.env.REACT_APP_SERVER}:${process.env.REACT_APP_PORT}/api/changes`, {
+      method: 'POST',
+      body: JSON.stringify({
+        old_subject: this.state.oldSubject,
+        ids,
+        from: this.state.instructorName,
+        reply: this.state.instructorEmail,
+        subject: this.state.emailSubject,
+        body: this.state.emailBody,
+        comp,
+        attr,
+        cert,
+        auto: automated,
+      }),
+    });
+
+    if (settings) {
+      console.log('Policy Successfully Saved!');
+    }
+  }
+
   async sendPolicy() {
-    console.log(this.state.oldSubject);
+    const ids = this.getIDs();
+    const comp = this.state.filterLimits['completion-chart'];
+    const attr = this.state.filterLimits['attrition-chart'];
+    const cert = this.state.filterLimits['certification-chart'];
+
+    const automated = this.state.automatedChecked;
+    const analytics = this.state.analyticsRadio;
+
+    const settings = await fetch(`https://${process.env.REACT_APP_SERVER}:${process.env.REACT_APP_PORT}/api/save`, {
+      method: 'POST',
+      body: JSON.stringify({
+        ids,
+        from: this.state.instructorName,
+        reply: this.state.instructorEmail,
+        subject: this.state.emailSubject,
+        body: this.state.emailBody,
+        comp,
+        attr,
+        cert,
+        auto: automated,
+        analytics,
+        timestamp: new Date(),
+      }),
+    });
+    if (settings) {
+      console.log('Policy Successfullly Sent!');
+    }
   }
 
   async drawGraphs(dataUrl, json) {
@@ -346,7 +430,7 @@ class Communicator extends Component {
           {this.state.dropdownValue}
           {this.state.analyticsOptions}
         </select>
-        <div id="analytics">
+        <div id="analytics" style={{ display: this.state.analyticsDisplay }} >
           <p style={{ float: 'left', clear: 'left', marginTop: '30px' }}>
             Analytics pre-sets to try: {/* es-lint-disable no-trailing-spaces */}
             <button type="button" id="comp-no-cert" onClick={this.onCompNoCertClick}>
@@ -392,8 +476,8 @@ class Communicator extends Component {
         >
           <h3>Compose Email</h3>
           <Spacer />
-          <h6 id="recipients">Recipients</h6>
-          <h6 id="all-recipients">All Recipients</h6>
+          <h6 id="recipients" style={{ display: this.state.recipientsDisplay }}>Recipients</h6>
+          <h6 id="all-recipients" style={{ display: this.state.allRecipientsDisplay }}>All Recipients</h6>
 
           <div style={{ marginTop: '20px' }}>
             <h4>From</h4>
@@ -442,10 +526,11 @@ class Communicator extends Component {
                 onMouseOut={this.onCheckTipMouseOut}
                 onFocus={() => {}}
                 onBlur={() => {}}
+                style={{ display: this.state.automatedDisplay }}
               />
               <p
                 id="automated2"
-                style={{ display: 'inline', marginTop: -10 }}
+                style={{ display: this.state.automated2Display, marginTop: -10 }}
                 onMouseOver={this.onCheckTipMouseOver}
                 onMouseOut={this.onCheckTipMouseOut}
                 onFocus={() => {}}
@@ -462,7 +547,16 @@ class Communicator extends Component {
             </div>
           </div>
         </form>
-        <button href="#" type="button" id="saveChanges" className="save" style={{ display: this.state.saveChangesDisplay }}>Save Changes</button>
+        <button
+          href="#"
+          type="button"
+          id="saveChanges"
+          className="save"
+          style={{ display: this.state.saveChangesDisplay }}
+          onClick={this.onSaveChangesClick}
+        >
+        Save Changes
+        </button>
       </div>
     );
   }
