@@ -3,6 +3,7 @@ import React, { Component } from 'react';
 import * as d3 from 'd3';
 
 import { Charts } from './Charts';
+import { Spacer } from './Spacer';
 
 import './styles.css';
 // TODO(Jeff): remove this in prod
@@ -23,7 +24,7 @@ class Communicator extends Component {
       dropdownValue: '',
       instructorEmail: '',
       emailButtonError: '',
-      analyticsRadio: false,
+      analyticsRadio: true,
       allRadio: false,
       selectedStudents: [],
       emailButtonClicked: false,
@@ -35,7 +36,8 @@ class Communicator extends Component {
       emailSentMessage: '',
       oldSubject: '',
       automatedChecked: false,
-      saveChangesDisplay: 'block',
+      saveChangesDisplay: 'none',
+      tipDisplay: 'none',
     };
 
     this.onEmailButtonClick = this.onEmailButtonClick.bind(this);
@@ -55,6 +57,13 @@ class Communicator extends Component {
     this.sendPolicy = this.sendPolicy.bind(this);
     this.loadData = this.loadData.bind(this);
     this.getIDs = this.getIDs.bind(this);
+    this.onAutomatedClick = this.onAutomatedClick.bind(this);
+    this.setEmailBody = this.setEmailBody.bind(this);
+    this.setInstructorName = this.setInstructorName.bind(this);
+    this.filter = this.filter.bind(this);
+    this.optSelected = this.optSelected.bind(this);
+    this.onCheckTipMouseOver = this.onCheckTipMouseOver.bind(this);
+    this.onCheckTipMouseOut = this.onCheckTipMouseOut.bind(this);
   }
 
   componentWillMount() {
@@ -99,19 +108,54 @@ class Communicator extends Component {
     }
   }
 
-  onLoad() {
-    this.drawGraphs(`https://${process.env.REACT_APP_SERVER}:${process.env.REACT_APP_PORT}/api/predictions`);
+  async onLoad() {
+    await this.drawGraphs(`https://${process.env.REACT_APP_SERVER}:${process.env.REACT_APP_PORT}/api/predictions`);
+    await this.getAnalytics();
   }
 
-  onAllRadioClick(event) {
+  onAllRadioClick() {
     this.setState({
-      allRadio: event.target.checked,
+      allRadio: true,
+      analyticsRadio: false,
     });
   }
 
-  onAnalyticsRadioClick(event) {
+  onAnalyticsRadioClick() {
     this.setState({
-      analyticsRadio: event.target.checked,
+      analyticsRadio: true,
+      allRadio: false,
+    });
+  }
+
+
+  onCheckTipMouseOut() {
+    this.setState({
+      tipDisplay: 'none',
+    });
+  }
+
+  onCheckTipMouseOver() {
+    this.setState({
+      tipDisplay: 'block',
+    });
+  }
+
+
+  setEmailBody(event) {
+    this.setState({
+      emailBody: event.target.value,
+    });
+  }
+
+  setEmailSubject(event) {
+    this.setState({
+      emailSubject: event.target.value,
+    });
+  }
+
+  setInstructorEmail(event) {
+    this.setState({
+      instructorEmail: event.target.value,
     });
   }
 
@@ -160,7 +204,7 @@ class Communicator extends Component {
         if (analyticsApiResult[analyticsKeys[i]].auto === 'true') {
           name = `(Active) ${name}`;
         }
-        appendedOptions.append((
+        appendedOptions.push((
           <option value={JSON.stringify(analyticsApiResult[analyticsKeys[i]])}>
             {name}
           </option>
@@ -171,24 +215,6 @@ class Communicator extends Component {
         analyticsOptions: [...this.state.analyticsOptions, ...appendedOptions],
       });
     }
-  }
-
-  setEmailBody(event) {
-    this.setState({
-      emailBody: event.target.value,
-    });
-  }
-
-  setEmailSubject(event) {
-    this.setState({
-      emailSubject: event.target.value,
-    });
-  }
-
-  setInstructorEmail(event) {
-    this.setState({
-      instructorEmail: event.target.value,
-    });
   }
 
   setInstructorName(event) {
@@ -231,19 +257,18 @@ class Communicator extends Component {
   }
 
   async sendPolicy() {
-    console.log('test');
+    console.log(this.state.oldSubject);
   }
 
   async drawGraphs(dataUrl, json) {
     if (json) {
       d3.json(dataUrl);
     } else {
-      let response = await d3.csv(dataUrl, {
+      const response = await d3.csv(dataUrl, {
         headers: {
           Authorization: `Basic ${btoa(`${process.env.REACT_APP_SECRET_USERNAME}:${process.env.REACT_APP_SECRET_PASSWORD}`)}`,
         },
       });
-      response = await response.json();
       await this.loadData(response);
     }
   }
@@ -286,10 +311,12 @@ class Communicator extends Component {
     if (r.auto === 'true') {
       this.setState({
         automatedChecked: true,
+        saveChangesDisplay: 'none',
       });
     } else {
       this.setState({
         automatedChecked: false,
+        saveChangesDisplay: 'none',
       });
     }
     if (r.analytics === 'true') {
@@ -304,6 +331,7 @@ class Communicator extends Component {
       <div style={{ padding: 20 }}>
         <h1 style={{ marginBottom: '0.5em' }}>Communicator</h1>
         <h3>Select recipients by:</h3>
+        <Spacer />
 
         <form className="radios">
           <div>
@@ -314,7 +342,7 @@ class Communicator extends Component {
           </div>
         </form>
 
-        <select id="myDropdown" onChange={() => console.log('optSelected(this.value)')} >
+        <select id="myDropdown" onChange={(event) => { this.optSelected(event.target.value); }} >
           {this.state.dropdownValue}
           {this.state.analyticsOptions}
         </select>
@@ -324,11 +352,12 @@ class Communicator extends Component {
             <button type="button" id="comp-no-cert" onClick={this.onCompNoCertClick}>
               Predicted to complete but not to earn a certificate
             </button>
+            <div style={{ width: 5, height: 10, display: 'inline-block' }} />
             <button type="button" id="attr-no-comp-cert" onClick={this.onAttrClick}>
               Predicted to attrit and not complete
             </button>
           </p>
-
+          <Spacer />
           <Charts />
 
           <aside id="totals">
@@ -354,27 +383,37 @@ class Communicator extends Component {
 
         </div>
 
-        <form style={{ borderStyle: 'solid', padding: '20px', marginTop: '50px' }}>
+        <form style={{
+          borderStyle: 'solid',
+          padding: '20px',
+          marginTop: '50px',
+          minHeight: 550,
+          }}
+        >
           <h3>Compose Email</h3>
+          <Spacer />
           <h6 id="recipients">Recipients</h6>
           <h6 id="all-recipients">All Recipients</h6>
 
           <div style={{ marginTop: '20px' }}>
+            <h4>From</h4>
+            <Spacer />
             <input id="from-name" type="text" placeholder="Instructor Name" value={this.state.instructorName} onChange={this.setInstructorName} />
             <input id="reply-to" type="text" placeholder="Instructor Email" value={this.state.instructorEmail} onChange={this.setInstructorEmail} />
             <p id="email-button-error">{this.state.emailButtonError}</p>
-            <h4>From</h4>
             <div>
-              <input id="email-subject" type="text" placeholder="Subject" value={this.state.emailSubject} onChange={this.setEmailSubject} />
+              <Spacer />
               <h4>Subject</h4>
+              <input id="email-subject" type="text" placeholder="Subject" value={this.state.emailSubject} onChange={this.setEmailSubject} />
+              <Spacer />
+              <h4>Body</h4>
               <textarea
                 id="email-body"
                 placeholder="Use [:fullname:] to insert learner's full name and [:firstname:] to insert learner's last name"
                 value={this.state.emailBody}
                 onChange={this.setEmailBody}
               />
-              <h4>Body</h4>
-
+              <Spacer />
               <button
                 type="button"
                 id="emailButton"
@@ -394,10 +433,28 @@ class Communicator extends Component {
                   return 'Send email to selected learners';
                 })()}
               </button>
-              <input id="automated" type="checkbox" checked={this.state.automatedChecked} onChange={this.onAutomatedClick} />
+              <input
+                id="automated"
+                type="checkbox"
+                checked={this.state.automatedChecked}
+                onChange={this.onAutomatedClick}
+                onMouseOver={this.onCheckTipMouseOver}
+                onMouseOut={this.onCheckTipMouseOut}
+                onFocus={() => {}}
+                onBlur={() => {}}
+              />
+              <p
+                id="automated2"
+                style={{ display: 'inline', marginTop: -10 }}
+                onMouseOver={this.onCheckTipMouseOver}
+                onMouseOut={this.onCheckTipMouseOut}
+                onFocus={() => {}}
+                onBlur={() => {}}
+              >
+                Automatically check for and send to new matches found daily
+              </p>
+              <p id="tip" style={{ display: this.state.tipDisplay }}>Tip: Enabling this feature will check everyday for learners who meet the analytics criteria of this communication and will send this email to them (learners will never recieve an email twice).</p>
               <p style={{ color: 'green' }} >{this.state.emailSentMessage}</p>
-              <p id="automated2" style={{ display: 'inline' }}>Automatically check for and send to new matches found daily</p>
-              <p id="tip">Tip: Enabling this feature will check everyday for learners who meet the analytics criteria of this communication and will send this email to them (learners will never recieve an email twice).</p>
               <p>
                 *Please check the maximum daily recipient limit of your email provider.
                 For example, Gmail is 500 per day.*
