@@ -11,3 +11,4 @@ __pycache__/
 data/user_info.csv
 data/predictions.csv
 scripts/demo.sh
+.env
