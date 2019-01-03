@@ -1,4 +1,5 @@
 // TODO(Jeff): refactor this to use environment variable
+/*
 const port = "your port here";
 const server = "your server here";
 const emailCode = "your email code here";
@@ -10,10 +11,11 @@ const getIDs = () => {
       ids.push($('.anon-student')[i].innerHTML);
   }
   return ids;
-}
+}*/
 
 // Updates the cross filter and compose email upon a selection of a dropdown option
 // Store old subject for updates
+/*
 let old_subject;
 const optSelected = (response) => {
   let r = JSON.parse(response);
@@ -33,12 +35,12 @@ const optSelected = (response) => {
     $('#saveChanges').css('display', 'inline-block');
   }
 }
-
+*/
 // Toggles the dropdown
 const toggleDropdown = () => {
     document.getElementById("myDropdown").classList.toggle("show");
 }
-
+/*
 // Clears the dropdown and appends on a disabled Load Past Communications option
 const clear_drop = () => {
   let myDropdown = document.getElementById('myDropdown');
@@ -52,6 +54,7 @@ const clear_drop = () => {
   myDropdown.appendChild(load);
   return myDropdown;
 }
+*/
 
 // TODO(Jeff): fix this to use component hooks
 // Closes the dropdown menu if the user clicks outside of it
@@ -68,15 +71,15 @@ window.onclick = function(event) {
     }
   }
 };
-
+/*
 // Creates the name for the dropdown which includes the date and subject
 const make_name = (timestamp, subject) => {
   let formatted_date = new Date(timestamp).toDateString().split(" ");
   return formatted_date[1] + " " + formatted_date[2] + " " + formatted_date[3] + " - " + subject;
 }
-
+*/
 // ---------- API CALLS ---------------------
-
+/*
 // TODO(Jeff): refactor all below to use async await
 const get_analytics = () => {
 let settings = {
@@ -102,7 +105,8 @@ let settings = {
 };
 $.ajax(settings);
 }
-
+*/
+/*
 const get_all = () => {
 let settings = {
   "async": true,
@@ -124,7 +128,8 @@ let settings = {
 };
 $.ajax(settings);
 }
-
+*/
+/*
 const send_emails = () => {
   let ids = getIDs();
   let ann = ($('#allRadio').attr("checked") === "checked");
@@ -155,7 +160,7 @@ const send_emails = () => {
   };
   $.ajax(settings);
 }
-
+*/
 const send_policy = () => {
   let ids = getIDs();
   let comp = window.filterLimits["completion-chart"];
