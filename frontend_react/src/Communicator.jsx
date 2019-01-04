@@ -18,6 +18,7 @@ TODOs for Jeff:
 class Communicator extends Component {
   constructor(props) {
     super(props);
+    console.log(process.env);
     this.state = {
       analyticsOptions: [],
       dropdownValue: '',
@@ -47,6 +48,9 @@ class Communicator extends Component {
       },
       allRecipientsDisplay: 'none',
       recipientsDisplay: 'block',
+      data: [],
+      filter: () => {},
+      reset: () => {},
     };
 
     this.onEmailButtonClick = this.onEmailButtonClick.bind(this);
@@ -75,6 +79,10 @@ class Communicator extends Component {
     this.onCheckTipMouseOut = this.onCheckTipMouseOut.bind(this);
     this.saveChanges = this.saveChanges.bind(this);
     this.onSaveChangesClick = this.onSaveChangesClick.bind(this);
+    this.updateSelectedStudents = this.updateSelectedStudents.bind(this);
+    this.updateNumLearners = this.updateNumLearners.bind(this);
+    this.setFilter = this.setFilter.bind(this);
+    this.setReset = this.setReset.bind(this);
   }
 
   componentWillMount() {
@@ -186,6 +194,18 @@ class Communicator extends Component {
   setInstructorEmail(event) {
     this.setState({
       instructorEmail: event.target.value,
+    });
+  }
+
+  setFilter(func) {
+    this.setState({
+      filter: func,
+    });
+  }
+
+  setReset(func) {
+    this.setState({
+      reset: func,
     });
   }
 
@@ -346,14 +366,19 @@ class Communicator extends Component {
 
   async drawGraphs(dataUrl, json) {
     if (json) {
-      d3.json(dataUrl);
+      const response = await d3.json(dataUrl);
+      this.loadData(response);
     } else {
-      const response = await d3.csv(dataUrl, {
+      let response = await fetch(dataUrl, {
         headers: {
           Authorization: `Basic ${btoa(`${process.env.REACT_APP_SECRET_USERNAME}:${process.env.REACT_APP_SECRET_PASSWORD}`)}`,
         },
+        method: 'GET',
       });
-      await this.loadData(response);
+      response = await response.text();
+      response = d3.csv.parse(response);
+      console.log(response);
+      this.loadData(response);
     }
   }
 
@@ -365,10 +390,14 @@ class Communicator extends Component {
   }
 
   filter(settings) {
-    console.log(settings);
+    this.state.filter(settings);
   }
 
-  loadData() {}
+  loadData(data) {
+    this.setState({
+      data,
+    });
+  }
 
   /**
    * Creates the name for the dropdown which includes the date and subject.
@@ -410,6 +439,19 @@ class Communicator extends Component {
     }
   }
 
+  updateNumLearners(totalActiveLearners, totalLearners) {
+    this.setState({
+      totalActiveLearners,
+      totalLearners,
+    });
+  }
+
+  updateSelectedStudents(newSelection) {
+    this.setState({
+      selectedStudents: newSelection,
+    });
+  }
+
   render() {
     return (
       <div style={{ padding: 20 }}>
@@ -442,16 +484,25 @@ class Communicator extends Component {
             </button>
           </p>
           <Spacer />
-          <Charts />
+          <Charts
+            data={this.state.data}
+            updateSelectedStudents={this.updateSelectedStudents}
+            updateNumLearners={this.updateNumLearners}
+            setFilter={this.setFilter}
+            setReset={this.setReset}
+            reset={this.state.reset}
+          />
 
           <aside id="totals">
             <span id="active">
-              {this.state.totalActiveLearners > 0 ? this.state.totalActiveLearners : '-'}
+              {`${(this.state.totalActiveLearners > 0 ? this.state.totalActiveLearners : '-')} `}
             </span>
-            <span id="percentage" />
-            of
+            <span id="percentage">
+              ({Math.round((this.state.totalActiveLearners * 100) / this.state.totalLearners)}%){' '}
+            </span>
+            of{' '}
             <span id="total">{this.state.totalLearners > 0 ? this.state.totalLearners : '-'}</span>
-            learners selected
+            {' '}learners selected{' '}
           </aside>
 
           <div id="lists">
@@ -476,8 +527,8 @@ class Communicator extends Component {
         >
           <h3>Compose Email</h3>
           <Spacer />
-          <h6 id="recipients" style={{ display: this.state.recipientsDisplay }}>Recipients</h6>
-          <h6 id="all-recipients" style={{ display: this.state.allRecipientsDisplay }}>All Recipients</h6>
+          <h6 id="recipients" style={{ display: this.state.recipientsDisplay }}>Recipients: {this.state.totalActiveLearners} Learners</h6>
+          <h6 id="all-recipients" style={{ display: this.state.allRecipientsDisplay }}>Recipients: {this.state.totalLearners} Learners</h6>
 
           <div style={{ marginTop: '20px' }}>
             <h4>From</h4>
