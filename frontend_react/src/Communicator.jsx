@@ -1,6 +1,7 @@
 import React, { Component } from 'react';
 
 import * as d3 from 'd3';
+import * as crossfilter from 'crossfilter2';
 
 import { Charts } from './Charts';
 import { Spacer } from './Spacer';
@@ -30,7 +31,6 @@ class Communicator extends Component {
       selectedStudents: [],
       emailButtonClicked: false,
       totalActiveLearners: 0,
-      totalLearners: 0,
       emailSubject: '',
       emailBody: '',
       instructorName: '',
@@ -41,29 +41,18 @@ class Communicator extends Component {
       automated2Display: 'inline',
       saveChangesDisplay: 'none',
       tipDisplay: 'none',
-      filterLimits: {
-        'completion-chart': [0, 100],
-        'attrition-chart': [0, 100],
-        'certification-chart': [0, 100],
-      },
       allRecipientsDisplay: 'none',
       recipientsDisplay: 'block',
-      data: [],
-      filter: () => {},
-      reset: () => {},
     };
 
     this.onEmailButtonClick = this.onEmailButtonClick.bind(this);
     this.onLoad = this.onLoad.bind(this);
     this.onAnalyticsRadioClick = this.onAnalyticsRadioClick.bind(this);
     this.onAllRadioClick = this.onAllRadioClick.bind(this);
-    this.onAttrClick = this.onAttrClick.bind(this);
-    this.onCompNoCertClick = this.onCompNoCertClick.bind(this);
     this.getAnalytics = this.getAnalytics.bind(this);
     this.getAll = this.getAll.bind(this);
     this.setInstructorEmail = this.setInstructorEmail.bind(this);
     this.setEmailSubject = this.setEmailSubject.bind(this);
-    this.drawGraphs = this.drawGraphs.bind(this);
     this.clearDrop = this.clearDrop.bind(this);
     this.makeName = this.makeName.bind(this);
     this.sendEmails = this.sendEmails.bind(this);
@@ -73,30 +62,20 @@ class Communicator extends Component {
     this.onAutomatedClick = this.onAutomatedClick.bind(this);
     this.setEmailBody = this.setEmailBody.bind(this);
     this.setInstructorName = this.setInstructorName.bind(this);
-    this.filter = this.filter.bind(this);
     this.optSelected = this.optSelected.bind(this);
     this.onCheckTipMouseOver = this.onCheckTipMouseOver.bind(this);
     this.onCheckTipMouseOut = this.onCheckTipMouseOut.bind(this);
     this.saveChanges = this.saveChanges.bind(this);
     this.onSaveChangesClick = this.onSaveChangesClick.bind(this);
-    this.updateSelectedStudents = this.updateSelectedStudents.bind(this);
-    this.updateNumLearners = this.updateNumLearners.bind(this);
-    this.setFilter = this.setFilter.bind(this);
-    this.setReset = this.setReset.bind(this);
+    this.forceRerender = this.forceRerender.bind(this);
+
+    this.allStudents = crossfilter([]);
+    this.filteredStudents = crossfilter([]);
+    this.anonUserId = this.filteredStudents.dimension(d => d.anon_user_id);
   }
 
   componentWillMount() {
     this.onLoad();
-  }
-
-  onAttrClick() {
-    // TODO(Jeff): document these numbers
-    this.filter([[0, 70], [80, 100], [0, 70]]);
-  }
-
-  onCompNoCertClick() {
-    // TODO(Jeff): document these numbers
-    this.filter([[80, 100], null, [0, 20]]);
   }
 
   onAutomatedClick(event) {
@@ -130,7 +109,7 @@ class Communicator extends Component {
   }
 
   async onLoad() {
-    await this.drawGraphs(`https://${process.env.REACT_APP_SERVER}:${process.env.REACT_APP_PORT}/api/predictions`);
+    await this.loadData(`https://${process.env.REACT_APP_SERVER}:${process.env.REACT_APP_PORT}/api/predictions`);
     await this.getAnalytics();
   }
 
@@ -194,18 +173,6 @@ class Communicator extends Component {
   setInstructorEmail(event) {
     this.setState({
       instructorEmail: event.target.value,
-    });
-  }
-
-  setFilter(func) {
-    this.setState({
-      filter: func,
-    });
-  }
-
-  setReset(func) {
-    this.setState({
-      reset: func,
     });
   }
 
@@ -364,24 +331,6 @@ class Communicator extends Component {
     }
   }
 
-  async drawGraphs(dataUrl, json) {
-    if (json) {
-      const response = await d3.json(dataUrl);
-      this.loadData(response);
-    } else {
-      let response = await fetch(dataUrl, {
-        headers: {
-          Authorization: `Basic ${btoa(`${process.env.REACT_APP_SECRET_USERNAME}:${process.env.REACT_APP_SECRET_PASSWORD}`)}`,
-        },
-        method: 'GET',
-      });
-      response = await response.text();
-      response = d3.csv.parse(response);
-      console.log(response);
-      this.loadData(response);
-    }
-  }
-
   clearDrop() {
     this.setState({
       dropdownValue: '',
@@ -389,14 +338,38 @@ class Communicator extends Component {
     });
   }
 
-  filter(settings) {
-    this.state.filter(settings);
+  forceRerender() {
+    this.setState({
+      totalActiveLearners: 0,
+    });
   }
 
-  loadData(data) {
-    this.setState({
-      data,
-    });
+  async loadData(dataUrl, json) {
+    let response;
+    if (json) {
+      response = await d3.json(dataUrl);
+    } else {
+      response = await fetch(dataUrl, {
+        headers: {
+          Authorization: `Basic ${btoa(`${process.env.REACT_APP_SECRET_USERNAME}:${process.env.REACT_APP_SECRET_PASSWORD}`)}`,
+        },
+        method: 'GET',
+      });
+      response = await response.text();
+      response = d3.csv.parse(response);
+    }
+
+    const students = response;
+
+    for (let i = 0; i < students.length; i += 1) {
+      students[i].index = i;
+      students[i].completion_prediction = +students[i].completion_prediction;
+      students[i].attrition_prediction = +students[i].attrition_prediction;
+      students[i].certification_prediction = +students[i].certification_prediction;
+    }
+    this.allStudents = crossfilter(students);
+    this.filteredStudents = crossfilter(students);
+    this.anonUserId = this.filteredStudents.dimension(d => d.anon_user_id);
   }
 
   /**
@@ -439,19 +412,6 @@ class Communicator extends Component {
     }
   }
 
-  updateNumLearners(totalActiveLearners, totalLearners) {
-    this.setState({
-      totalActiveLearners,
-      totalLearners,
-    });
-  }
-
-  updateSelectedStudents(newSelection) {
-    this.setState({
-      selectedStudents: newSelection,
-    });
-  }
-
   render() {
     return (
       <div style={{ padding: 20 }}>
@@ -473,49 +433,11 @@ class Communicator extends Component {
           {this.state.analyticsOptions}
         </select>
         <div id="analytics" style={{ display: this.state.analyticsDisplay }} >
-          <p style={{ float: 'left', clear: 'left', marginTop: '30px' }}>
-            Analytics pre-sets to try: {/* es-lint-disable no-trailing-spaces */}
-            <button type="button" id="comp-no-cert" onClick={this.onCompNoCertClick}>
-              Predicted to complete but not to earn a certificate
-            </button>
-            <div style={{ width: 5, height: 10, display: 'inline-block' }} />
-            <button type="button" id="attr-no-comp-cert" onClick={this.onAttrClick}>
-              Predicted to attrit and not complete
-            </button>
-          </p>
-          <Spacer />
           <Charts
-            data={this.state.data}
-            updateSelectedStudents={this.updateSelectedStudents}
-            updateNumLearners={this.updateNumLearners}
-            setFilter={this.setFilter}
-            setReset={this.setReset}
-            reset={this.state.reset}
+            allStudents={this.allStudents}
+            filteredStudents={this.filteredStudents}
+            forceRerender={this.forceRerender}
           />
-
-          <aside id="totals">
-            <span id="active">
-              {`${(this.state.totalActiveLearners > 0 ? this.state.totalActiveLearners : '-')} `}
-            </span>
-            <span id="percentage">
-              ({Math.round((this.state.totalActiveLearners * 100) / this.state.totalLearners)}%){' '}
-            </span>
-            of{' '}
-            <span id="total">{this.state.totalLearners > 0 ? this.state.totalLearners : '-'}</span>
-            {' '}learners selected{' '}
-          </aside>
-
-          <div id="lists">
-            <div id="student-list" className="list">
-              <div>
-                <div style={{ width: '200px', display: 'inline-block' }}>Anonymized Student ID</div>
-                <div style={{ width: '150px', display: 'inline-block' }}>Completion %</div>
-                <div style={{ width: '150px', display: 'inline-block' }}>Attrition %</div>
-                <div style={{ width: '150px', display: 'inline-block' }}>Certification %</div>
-              </div>
-            </div>
-          </div>
-
         </div>
 
         <form style={{
@@ -527,8 +449,8 @@ class Communicator extends Component {
         >
           <h3>Compose Email</h3>
           <Spacer />
-          <h6 id="recipients" style={{ display: this.state.recipientsDisplay }}>Recipients: {this.state.totalActiveLearners} Learners</h6>
-          <h6 id="all-recipients" style={{ display: this.state.allRecipientsDisplay }}>Recipients: {this.state.totalLearners} Learners</h6>
+          <h6 id="recipients" style={{ display: this.state.recipientsDisplay }}>Recipients: {this.anonUserId.top(Infinity).length} Learners</h6>
+          <h6 id="all-recipients" style={{ display: this.state.allRecipientsDisplay }}>Recipients: {this.anonUserId.top(Infinity).length} Learners</h6>
 
           <div style={{ marginTop: '20px' }}>
             <h4>From</h4>

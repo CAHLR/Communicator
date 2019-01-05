@@ -1,450 +1,422 @@
 import React from 'react';
-import PropTypes from 'prop-types';
 
 import * as d3 from 'd3';
+import PropTypes from 'prop-types';
 import * as crossfilter from 'crossfilter2';
+
+import { Spacer } from './Spacer';
 
 export class Charts extends React.Component {
   constructor(props) {
     super(props);
     this.state = {
-      updated: false,
+      filterLimits: {
+        'completion-chart': [0, 100],
+        'attrition-chart': [0, 100],
+        'certification-chart': [0, 100],
+      },
     };
+    const tempCrossfilter = crossfilter([]);
+    this.completion = tempCrossfilter.dimension(d => d.completion_prediction);
+    this.attrition = tempCrossfilter.dimension(d => d.attrition_prediction);
+    this.certification = tempCrossfilter.dimension(d => d.certification_prediction);
+    this.completions = this.completion.group(Math.floor);
+    this.attritions = this.attrition.group(Math.floor);
+    this.certifications = this.certification.group(Math.floor);
+    this.anonUserId = tempCrossfilter.dimension(d => d.anon_user_id);
+    this.charts = [];
+    this.idLookup = {};
 
-    this.loadData = this.loadData.bind(this);
+    this.initialized = false;
+
+    this.onAttrClick = this.onAttrClick.bind(this);
+    this.onCompNoCertClick = this.onCompNoCertClick.bind(this);
   }
 
-  shouldComponentUpdate(nextProps) {
-    if (!nextProps.data) {
-      return false;
+  shouldComponentUpdate(nextProps, nextState) {
+    if (nextProps.filteredStudents !== this.props.filteredStudents) {
+      return true;
     }
-    return true;
+    // deep equality check
+    if (JSON.stringify(nextState.filterLimits) !== JSON.stringify(this.state.filterLimits)) {
+      return true;
+    }
+    return false;
   }
 
-  // piggyback our d3 DOM changes whenever this component updates
   componentDidUpdate() {
-    this.loadData(this.props.data);
+    // eslint-disable-next-line
+    const charts = this.renderCharts(this.props.allStudents, this.props.filteredStudents);
   }
 
-  loadData(students) {
-    if (!students) {
-      // TODO(Jeff): Handle this more gracefully in the UI
-      // alert('Could not load student data');
-      return;
-    }
-    // Various formatters
-    const formatNumber = d3.format(',d');
-    /*
-    const formatChange = d3.format('+,d');
-    const formatDate = d3.time.format('%B %d, %Y');
-    const formatTime = d3.time.format('%I:%M %p');
-    */
+  onAttrClick() {
+    // TODO(Jeff): document these numbers
+    const limits = [[0, 70], [80, 100], [0, 70]];
+    this.charts.forEach((c, i) => {
+      c.filter(limits[i]);
+    });
+  }
 
-    // A nest operator
-    const nestByDate = d3.nest()
-      .key(() => 'Test');
+  onCompNoCertClick() {
+    // TODO(Jeff): document these numbers
+    const limits = [[80, 100], null, [0, 20]];
+    this.charts.forEach((c, i) => {
+      c.filter(limits[i]);
+    });
+  }
 
-    // A little coercion, since the CSV is untyped.
-    for (let i = 0; i < students.length; i += 1) {
-      const d = students[i];
-      d.index = i;
-      d.completion_prediction = +d.completion_prediction;
-      d.attrition_prediction = +d.attrition_prediction;
-      d.certification_prediction = +d.certification_prediction;
-    }
+  /* eslint-disable */
+  barChart(htmlId) {
+    if (!this.barChart.id) this.barChart.id = 0;
+    let id;
 
-    // Create the crossfilter for the relevant dimensions and groups.
-    const student = crossfilter(students);
-    const all = student.groupAll();
-    const anonUserId = student.dimension(d => d.anon_user_id);
-    const completion = student.dimension(d => d.completion_prediction);
-    const attrition = student.dimension(d => d.attrition_prediction);
-    const certification = student.dimension(d => d.certification_prediction);
-    const completions = completion.group(Math.floor);
-    const attritions = attrition.group(Math.floor);
-    const certifications = certification.group(Math.floor);
-
-    // Render the initial lists.
-    const list = d3.selectAll('.list')
-      // TODO(Jeff): fix this
-      // eslint-disable-next-line no-use-before-define
-      .data([studentList]);
-
-    // Render the total.
-    if (!this.state.updated) {
-      this.props.updateNumLearners(formatNumber(student.size()), formatNumber(student.size()));
-      this.setState({
-        updated: true,
-      });
+    if (!(htmlId in this.idLookup)) {
+      this.idLookup[htmlId] = this.barChart.id;
+      id = this.barChart.id;
+    } else {
+      id = this.idLookup[htmlId];
     }
 
-    // TODO(Jeff): fix this
-    // eslint-disable-next-line no-use-before-define
-    // renderAll();
-
-    const studentList = (div) => {
-      this.props.updateSelectedStudents(anonUserId.top(Infinity));
-      const studentsByDate = nestByDate.entries(anonUserId.top(Infinity));
-      div.each(() => {
-        const date = d3.select(this).selectAll('.all-students')
-          .data(studentsByDate, d => d.key);
-
-        date.enter().append('div')
-          .attr('class', 'all-students')
-          .append('div')
-          .attr('class', 'day')
-          .text(() => '');
-
-        date.exit().remove();
-
-        const tempStudent = date.order().selectAll('.student')
-          .data(d => d.values, d => d.index);
-
-        const studentEnter = tempStudent.enter().append('div')
-          .attr('class', 'student');
-
-        studentEnter.append('div')
-          .attr('class', 'anon-student')
-          .text(d => d.anon_user_id);
-
-        studentEnter.append('div')
-          .attr('class', 'completion')
-          .text(d => d.completion_prediction);
-
-        studentEnter.append('div')
-          .attr('class', 'attrition')
-          .text(d => d.attrition_prediction);
-
-        studentEnter.append('div')
-          .attr('class', 'certification')
-          .text(d => d.certification_prediction);
-
-        tempStudent.exit().remove();
-
-        tempStudent.order();
-      });
+    const margin = {
+      top: 10,
+      right: 10,
+      bottom: 20,
+      left: 10,
     };
+    let x;
+    const y = d3.scale.linear().range([100, 0]);
+    this.barChart.id += 1;
+    const axis = d3.svg.axis().orient("bottom");
+    const brush = d3.svg.brush();
+    let brushDirty;
+    let dimension;
+    let group;
+    let round;
+    let all;
 
-    const barChart = () => {
-      if (!barChart.id) barChart.id = 0;
+    const chart = () => {
+      let width = x.range()[1],
+        height = y.range()[0];
+      y.domain([0, all.top(1)[0].value]);
 
-      let margin = {
-        top: 10,
-        right: 10,
-        bottom: 20,
-        left: 10,
-      };
-      let x;
-      let y = d3.scale.linear().range([100, 0]);
-      barChart.id += 1;
-      const { id } = barChart;
-      const axis = d3.svg.axis().orient('bottom');
-      const brush = d3.svg.brush();
-      let brushDirty;
-      let dimension;
-      let group;
-      let round;
+      let div = d3.select(`#${htmlId}`),
+        g = div.select("g");
 
-      const innerChart = (div) => {
-        const width = x.range()[1];
-        const height = y.range()[0];
+      const resizePath = (d) => {
+        let e = +(d == "e"),
+          x = e ? 1 : -1,
+          y = height / 3;
+        return "M" + (.5 * x) + "," + y
+          + "A6,6 0 0 " + e + " " + (6.5 * x) + "," + (y + 6)
+          + "V" + (2 * y - 6)
+          + "A6,6 0 0 " + e + " " + (.5 * x) + "," + (2 * y)
+          + "Z"
+          + "M" + (2.5 * x) + "," + (y + 8)
+          + "V" + (2 * y - 8)
+          + "M" + (4.5 * x) + "," + (y + 8)
+          + "V" + (2 * y - 8);
+      }
 
-        y.domain([0, group.top(1)[0].value]);
-        console.log(div);
+      // Create the skeletal chart.
+      if (g.empty()) {
+        g = div.append("svg")
+          .attr("width", width + margin.left + margin.right)
+          .attr("height", height + margin.top + margin.bottom)
+          .append("g")
+          .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
 
-        div.each(() => {
-          const insideDiv = d3.select(this);
-          let g = div.select('g');
+        g.append("clipPath")
+          .attr("id", "clip-" + id)
+          .append("rect")
+          .attr("width", width)
+          .attr("height", height);
+        g.selectAll(".bar")
+          .data(["background", "foreground"])
+          .enter().append("path")
+          .attr("class", (d) => { return d + " bar"; })
+          .datum(group.all());
 
-          // Create the skeletal chart.
-          if (g.empty()) {
-            g = insideDiv.append('svg')
-              .attr('width', width + margin.left + margin.right)
-              .attr('height', height + margin.top + margin.bottom)
-              .append('g')
-              .attr('transform', `translate(${margin.left},${margin.top})`);
+        g.selectAll(".foreground.bar")
+          .attr("clip-path", "url(#clip-" + id + ")");
 
-            g.append('clipPath')
-              .attr('id', `clip-${id}`)
-              .append('rect')
-              .attr('width', width)
-              .attr('height', height);
+        g.append("g")
+          .attr("class", "axis")
+          .attr("transform", "translate(0," + height + ")")
+          .call(axis);
 
-            g.selectAll('.bar')
-              .data(['background', 'foreground'])
-              .enter().append('path')
-              .attr('class', d => `${d} bar`)
-              .datum(group.all());
+        // Initialize the brush component with pretty resize handles.
+        let gBrush = g.append("g").attr("class", "brush").call(brush);
+        gBrush.selectAll("rect").attr("height", height);
+        gBrush.selectAll(".resize").append("path").attr("d", resizePath);
+      }
 
-            g.selectAll('.foreground.bar')
-              .attr('clip-path', `url(#clip-${id})`);
-
-            g.append('g')
-              .attr('class', 'axis')
-              .attr('transform', `translate(0,${height})`)
-              .call(axis);
-
-            // Initialize the brush component with pretty resize handles.
-            const gBrush = g.append('g').attr('class', 'brush').call(brush);
-            gBrush.selectAll('rect').attr('height', height);
-
-            // TODO(Jeff): fix this
-            // eslint-disable-next-line no-use-before-define
-            gBrush.selectAll('.resize').append('path').attr('d', resizePath);
-          }
-
-          // Only redraw the brush if set externally.
-          if (brushDirty) {
-            brushDirty = false;
-            g.selectAll('.brush').call(brush);
-            div.select('.title a').style('display', brush.empty() ? 'none' : null);
-            if (brush.empty()) {
-              g.selectAll(`#clip-${id} rect`)
-                .attr('x', 0)
-                .attr('width', width);
-            } else {
-              const extent = brush.extent();
-              g.selectAll(`#clip-${id} rect`)
-                .attr('x', x(extent[0]))
-                .attr('width', x(extent[1]) - x(extent[0]));
-            }
-          }
-          // TODO(Jeff): fix this
-          // eslint-disable-next-line no-use-before-define
-          g.selectAll('.bar').attr('d', barPath);
-        });
-
-        const barPath = (groups) => {
-          const path = [];
-          let i = -1;
-          const n = groups.length;
-          let d;
-          while (i + 1 < n) {
-            i += 1;
-            d = groups[i];
-            path.push('M', x(d.key), ',', height, 'V', y(d.value), 'h9V', height);
-          }
-          return path.join('');
-        };
-
-        const resizePath = (d) => {
-          const e = +(d === 'e');
-          const xVar = e ? 1 : -1;
-          const yVar = height / 3;
-          // eslint-disable-next-line prefer-template
-          return 'M' + (0.5 * xVar) + ',' + yVar
-            + 'A6,6 0 0 ' + e + ' ' + (6.5 * xVar) + ',' + (yVar + 6)
-            + 'V' + ((2 * yVar) - 6)
-            + 'A6,6 0 0 ' + e + ' ' + (0.5 * xVar) + ',' + (2 * yVar)
-            + 'Z'
-            + 'M' + (2.5 * xVar) + ',' + (yVar + 8)
-            + 'V' + ((2 * yVar) - 8)
-            + 'M' + (4.5 * xVar) + ',' + (yVar + 8)
-            + 'V' + ((2 * yVar) - 8);
-        };
-      };
-
-      brush.on('brushstart.chart', () => {
-        const div = d3.select(this.parentNode.parentNode.parentNode);
-        div.select('.title a').style('display', null);
-      });
-
-      brush.on('brush.chart', () => {
-        const g = d3.select(this.parentNode);
-        let extent = brush.extent();
-        if (round) {
-          g.select('.brush')
-            .call(brush.extent(extent = extent.map(round)))
-            .selectAll('.resize')
-            .style('display', null);
-        }
-        g.select(`#clip-${id} rect`)
-          .attr('x', x(extent[0]))
-          .attr('width', x(extent[1]) - x(extent[0]));
-        dimension.filterRange(extent);
-        // Get name of chart and limits for that chart
-        window.filterLimits[g.node().parentNode.parentNode.id] = extent;
-      });
-
-      brush.on('brushend.chart', () => {
+      // Only redraw the brush if set externally.
+      if (brushDirty) {
+        brushDirty = false;
+        g.selectAll(".brush").call(brush);
         if (brush.empty()) {
-          const div = d3.select(this.parentNode.parentNode.parentNode);
-          div.select('.title a').style('display', 'none');
-          div.select(`#clip-${id} rect`).attr('x', null).attr('width', '100%');
-          dimension.filterAll();
+          g.selectAll("#clip-" + id + " rect")
+            .attr("x", 0)
+            .attr("width", width);
+        } else {
+          let extent = brush.extent();
+          g.selectAll("#clip-" + id + " rect")
+            .attr("x", x(extent[0]))
+            .attr("width", x(extent[1]) - x(extent[0]));
+        }
+      }
+
+      const barPath = (groups) => {
+        let path = [],
+          i = -1,
+          n = groups.length,
+          d;
+        while (++i < n) {
+          d = groups[i];
+          path.push("M", x(d.key), ",", height, "V", y(d.value), "h9V", height);
+        }
+        return path.join("");
+      }
+
+      g.selectAll(".bar").attr("d", barPath);
+    }
+
+    brush.on("brushstart.chart", () => {
+      const div = d3.select(`#${htmlId}`);
+      div.select(".title button").style("display", null);
+    });
+
+    brush.on("brush.chart", () => {
+      let g = d3.select(`#${htmlId}`).select('g'),
+        extent = brush.extent();
+      if (round) g.select(".brush")
+        .call(brush.extent(extent = extent.map(round)))
+        .selectAll(".resize")
+        .style("display", null);
+      g.select("#clip-" + id + " rect")
+        .attr("x", x(extent[0]))
+        .attr("width", x(extent[1]) - x(extent[0]));
+      dimension.filterRange(extent);
+      // Get name of chart and limits for that chart
+      this.setState({
+        filterLimits: {
+          ...this.state.filterLimits,
+          [`#${htmlId}`]: extent
         }
       });
+    });
 
-      innerChart.margin = (_) => {
-        if (!arguments.length) return margin;
-        margin = _;
-        return innerChart;
-      };
+    brush.on("brushend.chart", () => {
+      if (brush.empty()) {
+        let div = d3.select(`#${htmlId}`);
+        div.select(".title button").style("display", "none");
+        div.select("#clip-" + id + " rect").attr("x", null).attr("width", "100%");
+        dimension.filterAll();
+      }
+    });
 
-      innerChart.x = (_) => {
-        if (!arguments.length) return x;
-        x = _;
-        axis.scale(x);
-        brush.x(x);
-        return innerChart;
-      };
-
-      innerChart.y = (_) => {
-        if (!arguments.length) return y;
-        y = _;
-        return innerChart;
-      };
-
-      innerChart.dimension = (_) => {
-        if (!arguments.length) return dimension;
-        dimension = _;
-        return innerChart;
-      };
-
-      innerChart.filter = (_) => {
-        if (_) {
-          brush.extent(_);
-          dimension.filterRange(_);
-        } else {
-          brush.clear();
-          dimension.filterAll();
-        }
-        brushDirty = true;
-        return innerChart;
-      };
-
-      innerChart.group = (_) => {
-        if (!arguments.length) return group;
-        group = _;
-        return innerChart;
-      };
-
-      innerChart.round = (_) => {
-        if (!arguments.length) return round;
-        round = _;
-        return innerChart;
-      };
-
-      return d3.rebind(innerChart, brush, 'on');
+    chart.margin = (_) => {
+      if (!_) return margin;
+      margin = _;
+      return chart;
     };
 
+    chart.x = (_) => {
+      if (!_) return x;
+      x = _;
+      axis.scale(x);
+      brush.x(x);
+      return chart;
+    };
+
+    chart.y = (_) => {
+      if (!_) return y;
+      y = _;
+      return chart;
+    };
+
+    chart.dimension = (_) => {
+      if (!_) return dimension;
+      dimension = _;
+      return chart;
+    };
+
+    chart.all = (_) => {
+      if (!_) return all;
+      all = _;
+      return chart;
+    };
+
+    chart.filter = (_) => {
+      if (_) {
+        brush.extent(_);
+        dimension.filterRange(_);
+        this.setState({
+          filterLimits: {
+            ...this.state.filterLimits,
+            [`#${htmlId}`]: _
+          }
+        });
+      } else {
+        brush.clear();
+        dimension.filterAll();
+        this.setState({
+          filterLimits: {
+            ...this.state.filterLimits,
+            [`#${htmlId}`]: [0, 100]
+          }
+        });
+      }
+      brushDirty = true;
+      chart();
+      return chart;
+    };
+
+    chart.group = (_) => {
+      if (!_) return group;
+      group = _;
+      return chart;
+    };
+
+    chart.round = (_) => {
+      if (!_) return round;
+      round = _;
+      return chart;
+    };
+    return d3.rebind(chart, brush, "on");
+  }
+  /* eslint-enable */
+
+  reset(i) {
+    this.charts[i].filter(null);
+  }
+
+  renderCharts(allStudents, students) {
+    if (!students || !allStudents) {
+      return null;
+    }
+
+    if (!this.initialized) {
+      this.completion = students.dimension(d => d.completion_prediction);
+      this.attrition = students.dimension(d => d.attrition_prediction);
+      this.certification = students.dimension(d => d.certification_prediction);
+      this.completions = this.completion.group(Math.floor);
+      this.attritions = this.attrition.group(Math.floor);
+      this.certifications = this.certification.group(Math.floor);
+      this.anonUserId = students.dimension(d => d.anon_user_id);
+
+      this.initialized = true;
+    }
     const charts = [
-      // eslint-disable-next-line no-use-before-define
-      barChart()
-        .dimension(completion)
-        .group(completions)
+      this.barChart('completion-chart')
+        .all(allStudents.dimension(d => d.completion_prediction).group(Math.floor))
+        .dimension(this.completion)
+        .group(this.completions)
         .x(d3.scale.linear()
           .domain([0, 100])
           .rangeRound([0, 900])),
-      // eslint-disable-next-line no-use-before-define
-      barChart()
-        .dimension(attrition)
-        .group(attritions)
+      this.barChart('attrition-chart')
+        .all(allStudents.dimension(d => d.attrition_prediction).group(Math.floor))
+        .dimension(this.attrition)
+        .group(this.attritions)
         .x(d3.scale.linear()
           .domain([0, 100])
           .rangeRound([0, 900])),
-      // eslint-disable-next-line no-use-before-define
-      barChart()
-        .dimension(certification)
-        .group(certifications)
+      this.barChart('certification-chart')
+        .all(allStudents.dimension(d => d.certification_prediction).group(Math.floor))
+        .dimension(this.certification)
+        .group(this.certifications)
         .x(d3.scale.linear()
           .domain([0, 100])
           .rangeRound([0, 900])),
     ];
-
-    const filter = (filters) => {
-      filters.forEach((d, i) => { charts[i].filter(d); });
-      // eslint-disable-next-line no-use-before-define
-      renderAll();
-    };
-    if (!this.state.updated) {
-      this.props.setFilter(filter);
-    }
-
-    const reset = (i) => {
-      charts[i].filter(null);
-      // eslint-disable-next-line no-use-before-define
-      renderAll();
-    };
-    if (!this.state.updated) {
-      this.props.setReset(reset);
-    }
-    const chart = d3.selectAll('.chart')
-      .data(charts)
-      // TODO(Jeff): fix this
-      // eslint-disable-next-line no-use-before-define
-      .each((subChart) => { subChart.on('brush', renderAll).on('brushend', renderAll); });
-
-    // Renders the specified chart or list.
-    const render = (method) => {
-      d3.select(this).call(method);
-    };
-
-    // Whenever the brush moves, re-rendering everything.
-    const renderAll = () => {
-      chart.each(render);
-      list.each(render);
-      this.props.updateNumLearners(formatNumber(all.value()), formatNumber(student.size()));
-    };
-    renderAll();
+    charts.forEach(chart => chart());
+    this.charts = charts;
+    this.props.forceRerender();
+    console.log('Chart rerendered');
+    return charts;
   }
 
   render() {
     return (
-      <div id="charts">
-        <div id="completion-chart" className="chart">
-          <div className="title">
-            Completion % chance
-            <button
-              className="reset"
-              onClick={() => this.props.reset(1)}
-              style={{
-                display: 'none',
-              }}
-            >
-              reset
-            </button>
+      <div>
+        <p style={{ float: 'left', clear: 'left', marginTop: '30px' }}>
+          Analytics pre-sets to try: {/* es-lint-disable no-trailing-spaces */}
+          <button type="button" id="comp-no-cert" onClick={this.onCompNoCertClick}>
+            Predicted to complete but not to earn a certificate
+          </button>
+          <div style={{ width: 5, height: 10, display: 'inline-block' }} />
+          <button type="button" id="attr-no-comp-cert" onClick={this.onAttrClick}>
+            Predicted to attrit and not complete
+          </button>
+        </p>
+        <Spacer />
+        <div id="charts">
+          <div id="completion-chart" className="chart">
+            <div className="title">
+              Completion % chance{' '}
+              <button
+                className="reset"
+                onClick={() => this.reset(0)}
+                style={{
+                  display: 'none',
+                  color: 'black',
+                }}
+              >
+                reset
+              </button>
+            </div>
+          </div>
+          <div id="attrition-chart" className="chart">
+            <div className="title">
+              Attrition % chance{' '}
+              <button
+                className="reset"
+                onClick={() => this.reset(1)}
+                style={{
+                  display: 'none',
+                  color: 'black',
+                }}
+              >
+                reset
+              </button>
+            </div>
+          </div>
+          <div id="certification-chart" className="chart">
+            <div className="title">
+              Certification % chance{' '}
+              <button
+                className="reset"
+                onClick={() => this.reset(2)}
+                style={{
+                  display: 'none',
+                  color: 'black',
+                }}
+              >
+                reset
+              </button>
+            </div>
           </div>
         </div>
-        <div id="attrition-chart" className="chart">
-          <div className="title">
-            Attrition % chance
-            <button
-              className="reset"
-              onClick={() => this.props.reset(1)}
-              style={{
-                display: 'none',
-              }}
-            >
-              reset
-            </button>
-          </div>
-        </div>
-        <div id="certification-chart" className="chart">
-          <div className="title">
-            Certification % chance
-            <button
-              className="reset"
-              onClick={() => this.props.reset(1)}
-              style={{
-                display: 'none',
-              }}
-            >
-              reset
-            </button>
-          </div>
-        </div>
+        <aside id="totals">
+          <span id="active">
+            {`${(this.anonUserId.top(Infinity).length > 0 ? this.anonUserId.top(Infinity).length : '-')} `}
+          </span>
+          <span id="percentage">
+            ({Math.round((this.anonUserId.top(Infinity).length * 100) / this.props.allStudents.size())}%){' '}
+          </span>
+          of{' '}
+          <span id="total">{this.props.allStudents.size() > 0 ? this.props.allStudents.size() : '-'}</span>
+          {' '}learners selected{' '}
+        </aside>
       </div>
     );
   }
 }
 
 Charts.propTypes = {
-  data: PropTypes.arrayOf(PropTypes.object).isRequired,
-  updateSelectedStudents: PropTypes.func.isRequired,
-  updateNumLearners: PropTypes.func.isRequired,
-  setFilter: PropTypes.func.isRequired,
-  setReset: PropTypes.func.isRequired,
-  reset: PropTypes.func.isRequired,
+  filteredStudents: PropTypes.objectOf(crossfilter).isRequired,
+  allStudents: PropTypes.objectOf(crossfilter).isRequired,
+  forceRerender: PropTypes.func.isRequired,
 };
 export default Charts;
