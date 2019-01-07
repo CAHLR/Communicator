@@ -31,6 +31,13 @@ export class Charts extends React.Component {
 
     this.onAttrClick = this.onAttrClick.bind(this);
     this.onCompNoCertClick = this.onCompNoCertClick.bind(this);
+    this.filter = this.filter.bind(this);
+  }
+
+  componentDidMount() {
+    this.props.syncChart({
+      filter: this.filter,
+    });
   }
 
   shouldComponentUpdate(nextProps, nextState) {
@@ -45,8 +52,7 @@ export class Charts extends React.Component {
   }
 
   componentDidUpdate() {
-    // eslint-disable-next-line
-    const charts = this.renderCharts(this.props.allStudents, this.props.filteredStudents);
+    this.renderCharts(this.props.allStudents, this.props.filteredStudents);
   }
 
   onAttrClick() {
@@ -201,8 +207,11 @@ export class Charts extends React.Component {
       this.setState({
         filterLimits: {
           ...this.state.filterLimits,
-          [`#${htmlId}`]: extent
+          [`${htmlId}`]: extent
         }
+      });
+      this.props.syncChart({
+        filterLimits: this.state.filterLimits,
       });
     });
 
@@ -254,7 +263,7 @@ export class Charts extends React.Component {
         this.setState({
           filterLimits: {
             ...this.state.filterLimits,
-            [`#${htmlId}`]: _
+            [`${htmlId}`]: _
           }
         });
       } else {
@@ -263,10 +272,11 @@ export class Charts extends React.Component {
         this.setState({
           filterLimits: {
             ...this.state.filterLimits,
-            [`#${htmlId}`]: [0, 100]
+            [`${htmlId}`]: [0, 100]
           }
         });
       }
+      this.props.syncChart(this.state.filterLimits);
       brushDirty = true;
       chart();
       return chart;
@@ -286,6 +296,12 @@ export class Charts extends React.Component {
     return d3.rebind(chart, brush, "on");
   }
   /* eslint-enable */
+
+  filter(filters) {
+    for (let i = 0; i < this.charts.length; i += 1) {
+      this.charts[i].filter(filters[i]);
+    }
+  }
 
   reset(i) {
     this.charts[i].filter(null);
@@ -418,5 +434,6 @@ Charts.propTypes = {
   filteredStudents: PropTypes.objectOf(crossfilter).isRequired,
   allStudents: PropTypes.objectOf(crossfilter).isRequired,
   forceRerender: PropTypes.func.isRequired,
+  syncChart: PropTypes.func.isRequired,
 };
 export default Charts;

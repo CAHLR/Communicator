@@ -28,7 +28,6 @@ class Communicator extends Component {
       analyticsRadio: true,
       analyticsDisplay: 'block',
       allRadio: false,
-      selectedStudents: [],
       emailButtonClicked: false,
       totalActiveLearners: 0,
       emailSubject: '',
@@ -43,6 +42,12 @@ class Communicator extends Component {
       tipDisplay: 'none',
       allRecipientsDisplay: 'none',
       recipientsDisplay: 'block',
+      filter: () => {},
+      filterLimits: {
+        'completion-chart': [0, 100],
+        'attrition-chart': [0, 100],
+        'certification-chart': [0, 100],
+      },
     };
 
     this.onEmailButtonClick = this.onEmailButtonClick.bind(this);
@@ -58,7 +63,6 @@ class Communicator extends Component {
     this.sendEmails = this.sendEmails.bind(this);
     this.sendPolicy = this.sendPolicy.bind(this);
     this.loadData = this.loadData.bind(this);
-    this.getIDs = this.getIDs.bind(this);
     this.onAutomatedClick = this.onAutomatedClick.bind(this);
     this.setEmailBody = this.setEmailBody.bind(this);
     this.setInstructorName = this.setInstructorName.bind(this);
@@ -68,6 +72,7 @@ class Communicator extends Component {
     this.saveChanges = this.saveChanges.bind(this);
     this.onSaveChangesClick = this.onSaveChangesClick.bind(this);
     this.forceRerender = this.forceRerender.bind(this);
+    this.syncChart = this.syncChart.bind(this);
 
     this.allStudents = crossfilter([]);
     this.filteredStudents = crossfilter([]);
@@ -90,8 +95,13 @@ class Communicator extends Component {
         emailButtonError: 'You have entered an invalid Instructor Email',
       });
     } else if (this.state.emailButtonClicked) {
-      await this.sendEmails();
-      await this.sendPolicy();
+      await this.sendEmails(this.anonUserId.top(Infinity).map(d => d.anon_user_id));
+      await this.sendPolicy(
+        this.anonUserId.top(Infinity).map(d => d.anon_user_id),
+        this.state.filterLimits['completion-chart'],
+        this.state.filterLimits['attrition-chart'],
+        this.state.filterLimits['certification-chart'],
+      );
       if (this.state.analyticsRadio) {
         await this.getAnalytics();
       } else {
@@ -124,6 +134,7 @@ class Communicator extends Component {
       recipientsDisplay: 'none',
       saveChangesDisplay: 'none',
     });
+    this.state.filter([[0, 100], [0, 100], [0, 100]]);
     this.getAll();
   }
 
@@ -137,6 +148,7 @@ class Communicator extends Component {
       analyticsRadio: true,
       allRadio: false,
     });
+    this.state.filter([null, null, null]);
     this.getAnalytics();
   }
 
@@ -154,7 +166,12 @@ class Communicator extends Component {
   }
 
   async onSaveChangesClick() {
-    await this.saveChanges();
+    await this.saveChanges(
+      this.anonUserId.top(Infinity).map(d => d.anon_user_id),
+      this.state.filterLimits['completion-chart'],
+      this.state.filterLimits['attrition-chart'],
+      this.state.filterLimits['certification-chart'],
+    );
     await this.getAnalytics();
   }
 
@@ -176,22 +193,28 @@ class Communicator extends Component {
     });
   }
 
-  getIDs() {
-    // TODO(Jeff): refactor after integrating cross_filter
-    const ids = [];
-    for (let i = 0; i < $('.anon-student').length; i += 1) {
-      ids.push($('.anon-student')[i].innerHTML);
-    }
-    return ids;
-  }
-
   async getAll() {
     let settings = await fetch(`https://${process.env.REACT_APP_SERVER}:${process.env.REACT_APP_PORT}/api/all`, {
       method: 'GET',
     });
     settings = await settings.json();
     if (settings) {
-      const analyticsOptions = [];
+      const analyticsOptions = [
+        <option
+          selected
+          value={JSON.stringify({
+            subject: '',
+            comp: null,
+            attr: null,
+            cert: null,
+            body: '',
+            reply: '',
+            from: '',
+          })}
+        >
+          Load Past Communications
+        </option>,
+      ];
       const keys = Object.keys(settings);
       for (let i = 0; i < keys.length; i += 1) {
         const name = this.makeName(settings[keys[i]].timestamp, settings[keys[i]].subject);
@@ -240,12 +263,19 @@ class Communicator extends Component {
     });
   }
 
-  async sendEmails() {
-    const ids = this.getIDs();
+  syncChart(_) {
+    this.setState({
+      ..._,
+    });
+    console.log(_);
+  }
+
+  // TODO(Jeff): refactor this
+  async sendEmails(ids) {
     const ann = this.state.allRadio;
     // TODO(Jeff): refactor this to be less hacky
     const course = window.location.href.split('+')[1];
-    console.log(course);
+    console.log(ids);
     // TODO(Jeff): resolve XSS when we host on edx servers
     const settings = await fetch(`https://${process.env.REACT_APP_SERVER}:${process.env.REACT_APP_PORT}/api/email`, {
       method: 'POST',
@@ -262,8 +292,20 @@ class Communicator extends Component {
     });
 
     if (settings) {
+      await this.saveChanges(
+        this.anonUserId.top(Infinity).map(d => d.anon_user_id),
+        this.state.filterLimits['completion-chart'],
+        this.state.filterLimits['attrition-chart'],
+        this.state.filterLimits['certification-chart'],
+      );
+      if (this.state.analyticsRadio) {
+        this.getAnalytics();
+      } else {
+        this.getAll();
+      }
       this.setState({
         emailSentMessage: 'Successfully Sent!',
+        emailButtonClicked: false,
       });
       setTimeout(() => {
         this.setState({
@@ -272,12 +314,8 @@ class Communicator extends Component {
       }, 7500);
     }
   }
-
-  async saveChanges() {
-    const ids = this.getIDs();
-    const comp = this.state.filterLimits['completion-chart'];
-    const attr = this.state.filterLimits['attrition-chart'];
-    const cert = this.state.filterLimits['certification-chart'];
+  // TODO(Jeff): refactor this
+  async saveChanges(ids, comp, attr, cert) {
     const automated = this.state.automatedChecked;
 
     const settings = await fetch(`https://${process.env.REACT_APP_SERVER}:${process.env.REACT_APP_PORT}/api/changes`, {
@@ -301,12 +339,8 @@ class Communicator extends Component {
     }
   }
 
-  async sendPolicy() {
-    const ids = this.getIDs();
-    const comp = this.state.filterLimits['completion-chart'];
-    const attr = this.state.filterLimits['attrition-chart'];
-    const cert = this.state.filterLimits['certification-chart'];
-
+  // TODO(Jeff): refactor this
+  async sendPolicy(ids, comp, attr, cert) {
     const automated = this.state.automatedChecked;
     const analytics = this.state.analyticsRadio;
 
@@ -334,11 +368,27 @@ class Communicator extends Component {
   clearDrop() {
     this.setState({
       dropdownValue: '',
-      analyticsOptions: [<option selected disabled value="Load Past Communications">Load Past Communications</option>],
+      analyticsOptions: [
+        <option
+          selected
+          value={JSON.stringify({
+            subject: '',
+            comp: null,
+            attr: null,
+            cert: null,
+            body: '',
+            reply: '',
+            from: '',
+          })}
+        >
+          Load Past Communications
+        </option>,
+      ],
     });
   }
 
   forceRerender() {
+    console.log(this.state.totalActiveLearners);
     this.setState({
       totalActiveLearners: 0,
     });
@@ -387,7 +437,7 @@ class Communicator extends Component {
     this.setState({
       oldSubject: r.subject,
     });
-    this.filter([r.comp, r.attr, r.cert]);
+    this.state.filter([r.comp, r.attr, r.cert]);
     this.setState({
       emailSubject: r.subject,
       emailBody: r.body,
@@ -437,6 +487,7 @@ class Communicator extends Component {
             allStudents={this.allStudents}
             filteredStudents={this.filteredStudents}
             forceRerender={this.forceRerender}
+            syncChart={this.syncChart}
           />
         </div>
 
@@ -483,9 +534,9 @@ class Communicator extends Component {
                 {(() => {
                   if (this.state.emailButtonClicked) {
                     if (!this.state.analyticsRadio) {
-                      return `Are you sure you want to send this email to ${this.state.selectedStudents.length} students?`;
+                      return `Are you sure you want to send this email to ${this.anonUserId.top(Infinity).length} students?`;
                     }
-                    return `Are you sure you want to send this email to ${this.state.totalActiveLearners} students?`;
+                    return `Are you sure you want to send this email to ${this.anonUserId.top(Infinity).length} students?`;
                   }
                   return 'Send email to selected learners';
                 })()}
