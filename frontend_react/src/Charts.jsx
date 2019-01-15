@@ -451,7 +451,7 @@ export class Charts extends React.Component {
     return (
       <div>
         {/* preset filter value option buttons */}
-        <p style={{ float: 'left', clear: 'left', marginTop: '30px' }}>
+        <p style={{ clear: 'left', marginTop: '30px' }}>
           Analytics pre-sets to try: {/* es-lint-disable no-trailing-spaces */}
           <button type="button" id="comp-no-cert" onClick={this.onCompNoCertClick}>
             Predicted to complete but not to earn a certificate
