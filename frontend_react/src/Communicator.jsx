@@ -8,7 +8,7 @@ import { Spacer } from './Spacer';
 
 import './styles.css';
 // we manually import edX global styles in the current component
-import './edxStyles.css';
+// import './edxStyles.css';
 
 /**
  * The Communicator component is a self-contained widget that interacts with the

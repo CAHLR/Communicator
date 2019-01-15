@@ -12,5 +12,4 @@ data/user_info.csv
 data/predictions.csv
 scripts/demo.sh
 .env
-frontend_react/build
 frontend_react/.env
