@@ -168,6 +168,7 @@ module.exports = function(webpackEnv) {
               .replace(/\\/g, '/')
         : isEnvDevelopment &&
           (info => path.resolve(info.absoluteResourcePath).replace(/\\/g, '/')),
+      jsonpFunction: 'communicator',
     },
     optimization: {
       minimize: isEnvProduction,
