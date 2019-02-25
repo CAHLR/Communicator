@@ -8,13 +8,12 @@ var auth = require('basic-auth');
 var nodemailer = require('nodemailer');
 var $ = jQuery = require('jquery');
 var Policy     = require(process.cwd() + '/app/models/policy');
+var AnonUserId = require(process.cwd() + '/app/models/anonUserId');
 var mongoose   = require('mongoose');
 
 var server = process.env.server;
 var user_info = process.env.user;
 var predictions = process.env.pred;
-var secretUsername = process.env.un;
-var secretPassword = process.env.pw;
 var emailMode = process.env.emailMode;
 var emailUsername = process.env.emailUser;
 var emailPassword = process.env.emailPass;
@@ -27,7 +26,6 @@ var pcert_name = process.env.pcert;
 var bundle_name = process.env.bundle;
 var port = process.env.port;
 var mongoPort = process.env.mongoPort;
-var emailCode = process.env.emailCode;
 
 var transporter;
 require(process.cwd() + '/jquery.csv.min.js');
@@ -88,8 +86,19 @@ router.use(function(req, res, next) {
     next();
 });
 
-function checkCredentials(credentials) {
-  if (!credentials || credentials.name !== secretUsername || credentials.pass !== secretPassword) {
+async function checkAnonUserId(anonUserId) {
+  const result = await AnonUserId.findOne({
+    anonUserId,
+  });
+  if (result) {
+    return true;
+  }
+  return false;
+}
+
+async function checkCredentials(credentials) {
+  const idFound = await checkAnonUserId(credentials.name);
+  if (!credentials || !idFound || credentials.pass !== "edx") {
     return false;
   } else {
     return true;
@@ -107,7 +116,7 @@ function myError(err) {
 // sends emails
 router.route('/email')
     .post(function(req, res) {
-      if (req.body.pass === emailCode) {
+      if ((await checkAnonUserId(req.body.anonUserId))) {
         var ids = req.body.ids;
         if (req.body.ann === 'true') {
           ids = all_ids;
