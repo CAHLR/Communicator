@@ -26,6 +26,7 @@ var pcert_name = process.env.pcert;
 var bundle_name = process.env.bundle;
 var port = process.env.port;
 var mongoPort = process.env.mongoPort;
+var userPassword = process.env.userPassword;
 
 var transporter;
 require(process.cwd() + '/jquery.csv.min.js');
@@ -115,7 +116,7 @@ function myError(err) {
 // ----------------------------------------------------
 // sends emails
 router.route('/email')
-    .post(function(req, res) {
+    .post(async function(req, res) {
       if ((await checkAnonUserId(req.body.anonUserId))) {
         var ids = req.body.ids;
         if (req.body.ann === 'true') {
@@ -197,6 +198,28 @@ router.route('/predictions').get(function(req, res) {
   }
   res.sendFile(path.resolve(predictions));
 });
+
+// ----------------------------------------------------
+// add new authorized users to the database
+router.route('/addNewUser').post(function (req, res) {
+  if (req.body.userPassword === userPassword) {
+    const anonUserId = await AnonUserId.create({
+      anonUserId: req.body.anonUserId,
+      timestamp: new Date(),
+    });
+    if (anonUserId) {
+      res.statusCode = 200;
+      res.end();
+    } else {
+      res.statusCode = 500;
+      res.end('Internal server error occurred');
+    }
+  } else {
+    res.statusCode = 403;
+    res.end('Access denied.');
+    return;
+  }
+})
 
 // ----------------------------------------------------
 // queries the database for just analytics

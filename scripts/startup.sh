@@ -15,6 +15,7 @@ export pcert=name-of-pcert
 export bundle=name-of-bundle-cert
 export port=your-server-port # port of your backend server (must match with client_main.js)
 export mongoPort=your-mongo-port # port of your mongodb
+export userPassword=your-user-password # password for adding new authorized anon users
 
 while [ 1 ];do
 sh daily.sh
