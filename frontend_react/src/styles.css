@@ -37,13 +37,13 @@ display:none;
 
 #email-subject {
   width:250px;
-  margin-top:30px;
+  margin-top:10px;
 }
 
 #email-body{
   width:500px;
   height: 100px;
-  margin-top:20px;
+  margin-top:10px;
 }
 
 #automated {
@@ -51,7 +51,7 @@ display:none;
   margin-left: 50px;
   display:inline;
   width:16px;
-  height:16px
+  height:16px;
 }
 
 #tip {
@@ -61,7 +61,14 @@ display:none;
 }
 
 #saveChanges {
-  display:none; background:#00A0E3; float:right; color: white; margin:50px; width:200px; height:50px"
+  display:none; 
+  background:#00A0E3; 
+  float:right; 
+  color: white; 
+  margin:50px; 
+  width:200px; 
+  height:50px; 
+  text-shadow: 0 1px 0 #d2c9c9;
 }
 
 
@@ -107,7 +114,7 @@ h2 {
 }
 
 h1, h2 {
-  font-family: "Open Sans";
+  font-family: "Yanone Kaffeesatz";
   text-rendering: optimizeLegibility;
 }
 
@@ -265,7 +272,9 @@ aside {
 /* Show the dropdown menu (use JS to add this class to the .dropdown-content container when the user clicks on the dropdown button) */
 .show {display:block;}
 
-
+#email-button-error {
+  color: red
+}
 
 /* The Modal (background) */
 /*.modal {
@@ -331,8 +340,4 @@ aside {
 /* Show the tooltip text when you mouse over the tooltip container */
 .tooltip:hover .tooltiptext {
     visibility: visible;
-}
-
-#automated:hover {
-
 }

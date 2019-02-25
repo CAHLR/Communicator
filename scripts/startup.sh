@@ -3,8 +3,6 @@
 export server=your-server-here
 export user=../data/user_info.csv
 export pred=../data/predictions.csv
-export un=your-secret-username # (must match with cross_main.js)
-export pw=your-secret-password # (must match with cross_main.js)
 export emailMode=mailgun-or-email
 export emailUser=your-email-username
 export emailPass=your-email-pass
@@ -17,7 +15,7 @@ export pcert=name-of-pcert
 export bundle=name-of-bundle-cert
 export port=your-server-port # port of your backend server (must match with client_main.js)
 export mongoPort=your-mongo-port # port of your mongodb
-export emailCode=your-email-code # prevents malicious email attempts (must match with client_main.js)
+export userPassword=your-user-password # password for adding new authorized anon users
 
 while [ 1 ];do
 sh daily.sh

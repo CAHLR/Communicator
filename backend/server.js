@@ -8,13 +8,12 @@ var auth = require('basic-auth');
 var nodemailer = require('nodemailer');
 var $ = jQuery = require('jquery');
 var Policy     = require(process.cwd() + '/app/models/policy');
+var AnonUserId = require(process.cwd() + '/app/models/anonUserId');
 var mongoose   = require('mongoose');
 
 var server = process.env.server;
 var user_info = process.env.user;
 var predictions = process.env.pred;
-var secretUsername = process.env.un;
-var secretPassword = process.env.pw;
 var emailMode = process.env.emailMode;
 var emailUsername = process.env.emailUser;
 var emailPassword = process.env.emailPass;
@@ -27,7 +26,7 @@ var pcert_name = process.env.pcert;
 var bundle_name = process.env.bundle;
 var port = process.env.port;
 var mongoPort = process.env.mongoPort;
-var emailCode = process.env.emailCode;
+var userPassword = process.env.userPassword;
 
 var transporter;
 require(process.cwd() + '/jquery.csv.min.js');
@@ -88,8 +87,19 @@ router.use(function(req, res, next) {
     next();
 });
 
-function checkCredentials(credentials) {
-  if (!credentials || credentials.name !== secretUsername || credentials.pass !== secretPassword) {
+async function checkAnonUserId(anonUserId) {
+  const result = await AnonUserId.findOne({
+    anonUserId,
+  });
+  if (result) {
+    return true;
+  }
+  return false;
+}
+
+async function checkCredentials(credentials) {
+  const idFound = await checkAnonUserId(credentials.name);
+  if (!credentials || !idFound || credentials.pass !== "edx") {
     return false;
   } else {
     return true;
@@ -106,8 +116,8 @@ function myError(err) {
 // ----------------------------------------------------
 // sends emails
 router.route('/email')
-    .post(function(req, res) {
-      if (req.body.pass === emailCode) {
+    .post(async function(req, res) {
+      if ((await checkAnonUserId(req.body.anonUserId))) {
         var ids = req.body.ids;
         if (req.body.ann === 'true') {
           ids = all_ids;
@@ -188,6 +198,28 @@ router.route('/predictions').get(function(req, res) {
   }
   res.sendFile(path.resolve(predictions));
 });
+
+// ----------------------------------------------------
+// add new authorized users to the database
+router.route('/addNewUser').post(function (req, res) {
+  if (req.body.userPassword === userPassword) {
+    const anonUserId = await AnonUserId.create({
+      anonUserId: req.body.anonUserId,
+      timestamp: new Date(),
+    });
+    if (anonUserId) {
+      res.statusCode = 200;
+      res.end();
+    } else {
+      res.statusCode = 500;
+      res.end('Internal server error occurred');
+    }
+  } else {
+    res.statusCode = 403;
+    res.end('Access denied.');
+    return;
+  }
+})
 
 // ----------------------------------------------------
 // queries the database for just analytics

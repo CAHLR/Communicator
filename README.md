@@ -43,6 +43,20 @@ Le. C.V., Pardos, Z.A., Meyer, S.D., Thorp, R. (in-press) Communication at Scale
 2. Insert a **Raw HTML Block**
 3. Copy and paste `client.html` into the block
 
+## React Frontend
+
+The React frontend is a work in progress intended to be integrated into edX. To build, do the following:
+1. `cd` to `frontend_react`
+2. Run `npm install` to install dependencies
+3. Copy the contents of `.env.example` to a file called `.env`, and fill out the relevant credentials inside
+4. Run `npm run start` to start the dev server
+5. Run `npm run build` to build the production, minified build. The resulting build will be output to the `build` directory within `frontend_react` and can be served by any static web server like Nginx.
+
+* `Communicator.jsx` contains the vast majority of form code that takes the selected filters and interacts with the server to request/save/send emails to students.
+* `Charts.jsx` contains most of the `d3` code necessary to render the bar charts, selection bars, and filtering functions.
+
+Filtering is done by `crossfilter2`, making it fast and scalable (< 5ms for 1k records on a Core i5)
+
 ## Model
 
 Architecture and weights for the three trained models used to predict attrition, certification, and completion.
