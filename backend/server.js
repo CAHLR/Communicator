@@ -201,7 +201,7 @@ router.route('/predictions').get(function(req, res) {
 
 // ----------------------------------------------------
 // add new authorized users to the database
-router.route('/addNewUser').post(function (req, res) {
+router.route('/addNewUser').post(async function (req, res) {
   if (req.body.userPassword === userPassword) {
     const anonUserId = await AnonUserId.create({
       anonUserId: req.body.anonUserId,
